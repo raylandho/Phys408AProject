@@ -11,7 +11,6 @@ from settings import (
     CHARGE_RADIUS,
 )
 
-
 def calculate_field(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
     """
     Calculate the electric field at a point (px, py), considering charges and dielectric regions.
@@ -45,6 +44,55 @@ def calculate_field(px, py, charges, dielectrics, zoom_level, camera_offset_x, c
 
     return total_ex, total_ey
 
+
+def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
+    """
+    Calculate the electric field at a point (px, py) and collect detailed calculation steps.
+    Returns total_ex, total_ey, and math_details containing contributions from each charge.
+    """
+    total_ex, total_ey = 0.0, 0.0
+    math_details = {'charges': []}
+
+    # Convert screen coordinates to world coordinates
+    world_px = (px - camera_offset_x) / zoom_level
+    world_py = (py - camera_offset_y) / zoom_level
+
+    # Check if the point is inside any dielectric region
+    epsilon_r = 1.0  # Default relative permittivity (vacuum)
+    for (x1, y1, width, height, dielectric_epsilon) in dielectrics:
+        x2 = x1 + width
+        y2 = y1 + height
+        if x1 <= world_px <= x2 and y1 <= world_py <= y2:
+            epsilon_r = dielectric_epsilon
+            break
+    math_details['epsilon_r'] = epsilon_r
+
+    # Calculate contributions from each charge
+    for (cx, cy, q) in charges:
+        dx = world_px - cx
+        dy = world_py - cy
+        r_squared = dx**2 + dy**2
+        if r_squared == 0:
+            continue  # Avoid division by zero
+
+        e_magnitude = COULOMB_CONSTANT * q / (r_squared * epsilon_r)
+        angle = math.atan2(dy, dx)
+        ex = e_magnitude * math.cos(angle)
+        ey = e_magnitude * math.sin(angle)
+
+        total_ex += ex
+        total_ey += ey
+
+        # Store details for this charge
+        math_details['charges'].append({
+            'q': q,
+            'r_squared': r_squared,
+            'angle': angle,
+            'ex': ex,
+            'ey': ey,
+        })
+
+    return total_ex, total_ey, math_details
 
 def draw_field_lines(
     screen, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y, screen_info

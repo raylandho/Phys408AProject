@@ -28,3 +28,34 @@ MIN_ZOOM_LEVEL = 0.5
 MAX_ZOOM_LEVEL = 3.0
 BASE_PAN_SPEED = 2
 FIELD_LINE_STEP = 5
+
+# **Additions Start Here**
+
+# UI Settings
+
+# Sidebar Settings
+SIDEBAR_BACKGROUND_COLOR = (230, 230, 230)  # Light gray background for the sidebar
+SIDEBAR_TITLE_FONT_SIZE = 30              # Font size for the sidebar title
+SIDEBAR_TEXT_PADDING = 10                  # Padding for text within the sidebar
+
+# Scrollbar Settings
+SCROLLBAR_COLOR = (150, 150, 150)          # Dark gray color for the scrollbar
+SCROLLBAR_WIDTH = 10                       # Width of the scrollbar in pixels
+
+# LaTeX Rendering Settings
+LATEX_FONT_SIZE = 16                       # Font size for LaTeX-rendered text
+LATEX_DPI = 100                            # DPI for LaTeX rendering
+
+# Dielectric Preview Settings
+DIELECTRIC_PREVIEW_COLOR = (0, 255, 255)   # Cyan color for dielectric outlines
+DIELECTRIC_PREVIEW_WIDTH = 2               # Thickness of the dielectric outline
+
+# Toolbox Button Settings
+TOOLBOX_BUTTON_PADDING = 10                # Padding inside toolbox buttons
+
+# Probe Information Sidebar Settings
+PROBE_INFO_MAX_WIDTH = TOOLBOX_WIDTH - 20  # Maximum width for content inside the sidebar
+
+# Color Definitions
+WHITE = (255, 255, 255)  # White color
+BLACK = (0, 0, 0)        # Black color (in case it's needed separately)
