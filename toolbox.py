@@ -19,7 +19,8 @@ buttons = [
     {"label": "Zoom Out", "tool": "zoom_out"},
     {"label": "Pan", "tool": "pan"},
     {"label": "Add Dielectric", "tool": "add_dielectric"},
-    {"label": "Probe Field", "tool": "probe_field"},  # New tool
+    {"label": "Remove Dielectric", "tool": "remove_dielectric"},
+    {"label": "Probe Field", "tool": "probe_field"},  
 ]
 selected_tool = "add_positive"  # Default selected tool
 

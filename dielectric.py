@@ -29,6 +29,20 @@ def add_dielectric(start_x, start_y, end_x, end_y, epsilon_r, zoom_level, camera
     dielectrics.append((rect_x, rect_y, rect_width, rect_height, epsilon_r))
     print(f"Dielectric added at ({rect_x:.2f}, {rect_y:.2f}) with size {rect_width:.2f} x {rect_height:.2f}, epsilon_r = {epsilon_r}")
 
+def remove_dielectric(x, y, zoom_level, camera_offset_x, camera_offset_y, dielectrics):
+    """
+    Remove the dielectric near the clicked position.
+    """
+    world_x = (x - camera_offset_x) / zoom_level
+    world_y = (y - camera_offset_y) / zoom_level
+
+    for idx, (rect_x, rect_y, rect_width, rect_height, epsilon_r) in enumerate(dielectrics):
+        if rect_x <= world_x <= rect_x + rect_width and rect_y <= world_y <= rect_y + rect_height:
+            del dielectrics[idx]
+            print(f"Dielectric removed at ({rect_x}, {rect_y})")
+            return
+    print("No dielectric found at the clicked position.")
+
 def calculate_field_at_point(charges, world_x, world_y, epsilon_r=1.0):
     """
     Calculate the net electric field at a given world coordinate (world_x, world_y).

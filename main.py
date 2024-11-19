@@ -25,7 +25,7 @@ from settings import (
 )
 from toolbox import draw_toolbox, handle_toolbox_click, get_selected_tool
 from electric_field import calculate_field, draw_field_lines
-from dielectric import add_dielectric, draw_dielectrics
+from dielectric import add_dielectric, draw_dielectrics, remove_dielectric
 
 # Import Matplotlib for rendering math text
 import matplotlib
@@ -418,6 +418,13 @@ def main():
                             drag_start_pos = (mouse_x, mouse_y)
                         elif tool == "add_dielectric":
                             start_drag_pos = (mouse_x, mouse_y)  # Start rectangle for dielectric
+                        elif tool == "remove_dielectric":
+                            # Call remove_dielectric function
+                            removed = remove_dielectric(
+                                mouse_x, mouse_y, zoom_level, camera_offset_x, camera_offset_y, dielectrics
+                            )
+                            if removed:
+                                print("Dielectric removed.")
                         elif tool == "probe_field":
                             # Set the probe point and calculate the field with details
                             probe_point = (mouse_x, mouse_y)
