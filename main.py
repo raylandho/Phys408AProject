@@ -351,8 +351,8 @@ def main():
             screen_info,
         )
         draw_dielectrics(
-            screen, zoom_level, camera_offset_x, camera_offset_y, dielectrics
-        )  # Draw dielectric regions
+            screen, zoom_level, camera_offset_x, camera_offset_y, dielectrics, charges
+        ) 
 
         # Draw dielectric preview if in progress
         if current_tool == "add_dielectric" and start_drag_pos:
