@@ -40,9 +40,7 @@ WIDTH = screen_info.current_w - TOOLBOX_WIDTH
 HEIGHT = screen_info.current_h
 
 # Set windowed fullscreen mode (borderless window)
-screen = pygame.display.set_mode(
-    (screen_info.current_w, screen_info.current_h)
-)
+screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h))
 pygame.display.set_caption("Electric Field Simulator")
 
 # Zoom and camera variables
@@ -62,6 +60,11 @@ math_details = None  # Stores detailed calculations
 
 # Scroll offset for probe field text
 scroll_offset = 0  # Initialize scroll offset
+
+# Fonts and Colors
+FONT = pygame.font.Font(None, 20)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 def render_latex(text, font_size=14, dpi=100, color='black', max_width=None):
     """
@@ -122,8 +125,10 @@ def render_latex(text, font_size=14, dpi=100, color='black', max_width=None):
 
     return image.convert_alpha()  # Convert for faster blitting and transparency
 
-# Draw the grid
 def draw_grid():
+    """
+    Draws a grid based on the current zoom level and camera offset.
+    """
     scaled_grid_size = int(GRID_SIZE * zoom_level)
     if scaled_grid_size == 0:
         scaled_grid_size = 1  # Prevent division by zero
@@ -134,8 +139,10 @@ def draw_grid():
     for y in range(start_y, screen_info.current_h, scaled_grid_size):
         pygame.draw.line(screen, (220, 220, 220), (0, y), (screen_info.current_w, y))
 
-# Draw charges on the screen
 def draw_charges():
+    """
+    Draws all charges on the screen.
+    """
     for (world_x, world_y, charge_magnitude) in charges:
         color = POSITIVE_COLOR if charge_magnitude > 0 else NEGATIVE_COLOR
         screen_x = int(world_x * zoom_level + camera_offset_x)
@@ -143,16 +150,20 @@ def draw_charges():
         radius = max(1, int(CHARGE_RADIUS * zoom_level))  # Scale radius
         pygame.draw.circle(screen, color, (screen_x, screen_y), radius)
 
-# Add a charge at the specified location
 def add_charge(x, y, charge_type):
+    """
+    Adds a charge of specified type at the given screen coordinates.
+    """
     world_x = (x - camera_offset_x) / zoom_level
     world_y = (y - camera_offset_y) / zoom_level
     charge_magnitude = 1 if charge_type == "positive" else -1
     charges.append((world_x, world_y, charge_magnitude))
     print(f"Charge added: ({world_x:.2f}, {world_y:.2f}), type: {charge_type}")
 
-# Remove a charge near a specified location
 def remove_charge(x, y):
+    """
+    Removes a charge near the specified screen coordinates.
+    """
     global charges
     world_x = (x - camera_offset_x) / zoom_level
     world_y = (y - camera_offset_y) / zoom_level
@@ -164,7 +175,6 @@ def remove_charge(x, y):
     charges = new_charges
     print(f"Charge removed near: ({world_x:.2f}, {world_y:.2f})")
 
-# Scale zoom function to adjust camera offsets
 def scale_zoom(previous_zoom, new_zoom):
     """
     Adjust the camera offsets to maintain the same view when zooming in or out.
@@ -180,26 +190,39 @@ def scale_zoom(previous_zoom, new_zoom):
         f"Camera offset after zoom: ({camera_offset_x}, {camera_offset_y}), Zoom level: {new_zoom:.2f}"
     )
 
-def draw_probe_info(screen, probe_point, field_at_probe, math_details, scroll_offset):
+def draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details):
     """
-    Draw a marker at the probe point and display the electric field information and calculations.
-    Returns the bounding rectangle of the text area and scrollbar.
+    Display probe information in a fixed sidebar on the right side of the screen with a scrollbar.
     """
-    mouse_x, mouse_y = probe_point
-    # Draw a small circle at the probe point
-    pygame.draw.circle(screen, (255, 0, 0), (mouse_x, mouse_y), 5)
+    global scroll_offset  # Use the global scroll offset
+
+    sidebar_width = TOOLBOX_WIDTH
+    sidebar_x = screen_info.current_w - sidebar_width
+    sidebar_y = 0
+    sidebar_height = screen_info.current_h
+
+    # Draw sidebar background
+    pygame.draw.rect(screen, (230, 230, 230), (sidebar_x, sidebar_y, sidebar_width, sidebar_height))
+
+    # Title
+    title_font = pygame.font.Font(None, 30)
+    title_text = title_font.render("Probe Information", True, BLACK)
+    screen.blit(title_text, (sidebar_x + 10, 10))
 
     # Prepare the math-formatted text
     lines = []
 
     # Add the formula
-    lines.append(r"Electric Field at a Point:")
+    lines.append(r"Electric Field at Probe Point:")
     lines.append(r"$\vec{E} = \sum_i \vec{E}_i$")
     lines.append(r"$\vec{E}_i = \frac{k q_i}{\varepsilon_r r_i^2} \hat{r}_i$")
-    lines.append(r"$E_{i_x} = E_i \cos{\theta_i},\quad E_{i_y} = E_i \sin{\theta_i}$")
+    lines.append(r"$E_{x} = \sum E_{i_x}$")
+    lines.append(r"$E_{y} = \sum E_{i_y}$")
+    lines.append(r"$|\vec{E}| = \sqrt{E_x^2 + E_y^2}$")
+    lines.append(r"$\theta = \tan^{-1}\left( \frac{E_y}{E_x} \right)$")
     lines.append(r"")
 
-    # Add whether the point is inside a dielectric
+    # Add dielectric information
     if math_details['epsilon_r'] > 1.0:
         dielectric_info = r"Inside dielectric ($\varepsilon_r = {:.2f}$)".format(math_details['epsilon_r'])
     else:
@@ -212,7 +235,7 @@ def draw_probe_info(screen, probe_point, field_at_probe, math_details, scroll_of
     for idx, charge_info in enumerate(math_details['charges']):
         q = charge_info['q']
         r = math.sqrt(charge_info['r_squared'])
-        angle_deg = math.degrees(charge_info['angle'])
+        angle_deg = math.degrees(math.atan2(charge_info['ey'], charge_info['ex']))
         ex = charge_info['ex']
         ey = charge_info['ey']
         lines.append(rf"Charge {idx+1}:")
@@ -231,79 +254,66 @@ def draw_probe_info(screen, probe_point, field_at_probe, math_details, scroll_of
 
     # Show the total electric field calculation
     lines.append(r"Total Electric Field:")
-    lines.append(rf"$E_x = \sum E_{{i_x}} = {Ex:.2e}\ \mathrm{{N/C}}$")
-    lines.append(rf"$E_y = \sum E_{{i_y}} = {Ey:.2e}\ \mathrm{{N/C}}$")
-    lines.append(rf"$|\vec{{E}}| = \sqrt{{E_x^2 + E_y^2}} = {E_magnitude:.2e}\ \mathrm{{N/C}}$")
-    lines.append(rf"$\theta = \tan^{{-1}}\left( \frac{{E_y}}{{E_x}} \right) = {E_angle:.2f}^\circ$")
+    lines.append(rf"$E_x = {Ex:.2e}\ \mathrm{{N/C}}$")
+    lines.append(rf"$E_y = {Ey:.2e}\ \mathrm{{N/C}}$")
+    lines.append(rf"$|\vec{{E}}| = {E_magnitude:.2e}\ \mathrm{{N/C}}$")
+    lines.append(rf"$\theta = {E_angle:.2f}^\circ$")
+    lines.append(r"")
 
-    # Render each line and collect their sizes
+    # Render each line and calculate total content height
     rendered_lines = []
     max_line_width = 0
-    total_height = 0
+    total_content_height = 0
     for line in lines:
         if line.strip() == "":
-            line_height = 10  # Add extra space for empty lines
-            rendered_lines.append((None, line_height))
-            total_height += line_height + 5
+            # Add space for empty lines
+            rendered_lines.append((None, 10))
+            total_content_height += 10 + 5  # Line height + spacing
             continue
 
-        rendered_line = render_latex(line, font_size=14, dpi=100)
-        line_width = rendered_line.get_width()
-        line_height = rendered_line.get_height()
+        rendered_line = render_latex(line, font_size=16, dpi=100, max_width=sidebar_width - 20)
+        line_width, line_height = rendered_line.get_size()
         rendered_lines.append((rendered_line, line_height))
         if line_width > max_line_width:
             max_line_width = line_width
-        total_height += line_height + 5  # Adjust spacing between lines
+        total_content_height += line_height + 5  # Line height + spacing
 
-    # Adjust text_x and text_y if text would go off the screen
-    screen_width, screen_height = screen.get_size()
-    text_x = mouse_x + 10
-    text_y = mouse_y + 10
+    # Clamp scroll_offset to valid range
+    if total_content_height > sidebar_height - 50:  # 50px reserved for title
+        max_scroll = total_content_height - (sidebar_height - 50)
+        scroll_offset = max(0, min(scroll_offset, max_scroll))
+    else:
+        scroll_offset = 0  # Reset if content fits
 
-    if text_x + max_line_width > screen_width:
-        text_x = mouse_x - max_line_width - 30  # Position text to the left of the probe point
-        if text_x < 0:
-            text_x = 10  # Ensure it's not off the left edge
+    # Blit the rendered lines onto the sidebar with scroll_offset
+    y_offset = 50 - scroll_offset  # Starting y position for text within sidebar
 
-    # Apply scroll offset
-    text_y -= scroll_offset
-
-    # Limit scroll_offset
-    max_scroll = max(0, total_height - (screen_height - text_y - 20))
-    if scroll_offset > max_scroll:
-        scroll_offset = max_scroll
-    if scroll_offset < 0:
-        scroll_offset = 0
-
-    # Blit the rendered lines onto the screen
-    current_y = text_y
     for rendered_line, line_height in rendered_lines:
         if rendered_line:
-            # Check if the line is within the visible area
-            if current_y + line_height > 0 and current_y < screen_height:
-                screen.blit(rendered_line, (text_x, current_y))
-        current_y += line_height + 5  # Adjust spacing between lines
+            # Only blit if within the visible area
+            if y_offset + line_height > 50 and y_offset < sidebar_height - 20:
+                screen.blit(rendered_line, (sidebar_x + 10, y_offset))
+        y_offset += line_height + 5  # Move down for the next line
 
-    # Optional: Draw a scroll bar
-    scrollbar_rect = None
-    visible_height = screen_height - text_y - 20
-    if total_height > visible_height:
-        scrollbar_height = visible_height * (visible_height / total_height)
-        scrollbar_range = visible_height - scrollbar_height
-        scrollbar_y = text_y + (scroll_offset / (total_height - visible_height)) * scrollbar_range
-        scrollbar_rect = pygame.Rect(text_x + max_line_width + 5, scrollbar_y, 10, scrollbar_height)
+    # Draw scrollbar if content exceeds sidebar height
+    if total_content_height > (sidebar_height - 50):
+        scrollbar_height = max(20, (sidebar_height - 50) * (sidebar_height - 50) // total_content_height)
+        scrollbar_y = 50 + (scroll_offset * (sidebar_height - 50 - scrollbar_height) // (total_content_height - (sidebar_height - 50)))
+        scrollbar_rect = pygame.Rect(sidebar_x + sidebar_width - 15, scrollbar_y, 10, scrollbar_height)
         pygame.draw.rect(screen, (150, 150, 150), scrollbar_rect)
 
-    # Calculate the bounding rectangle of the text area
-    text_area_rect = pygame.Rect(
-        text_x,
-        text_y,
-        max_line_width + 15,  # Include scrollbar width
-        min(total_height, visible_height)
-    )
-
-    # Return the updated scroll_offset, text area rectangle, scrollbar rectangle, and dimensions
-    return scroll_offset, text_area_rect, scrollbar_rect, total_height, visible_height
+def handle_scroll(event, total_content_height, sidebar_height):
+    """
+    Handles scrolling within the probe information sidebar.
+    """
+    global scroll_offset
+    scroll_speed = 20  # Adjust scroll speed as needed
+    if event.type == pygame.MOUSEWHEEL:
+        scroll_offset -= event.y * scroll_speed
+        # Clamp scroll_offset to valid range
+        max_scroll = max(0, total_content_height - (sidebar_height - 50))
+        scroll_offset = max(0, min(scroll_offset, max_scroll))
+        print(f"Scroll offset updated: {scroll_offset}")
 
 def draw_dielectric_preview(screen, start_pos, end_pos):
     """
@@ -318,7 +328,7 @@ def draw_dielectric_preview(screen, start_pos, end_pos):
     rect_height = abs(end_y - start_y)
 
     rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
-    pygame.draw.rect(screen, (0, 255, 255), rect, 2)  # Outline
+    pygame.draw.rect(screen, (0, 255, 255), rect, 2)  # Cyan outline
 
 def main():
     global zoom_level, camera_offset_x, camera_offset_y, is_dragging, drag_start_pos
@@ -326,18 +336,9 @@ def main():
     global scroll_offset  # Declare scroll_offset as global
 
     running = True
-    text_area_rect = None  # Initialize text_area_rect
-
-    # New variables for scrollbar dragging
-    is_dragging_scrollbar = False
-    scrollbar_start_pos = None
-    scrollbar_start_offset = 0
-    scrollbar_rect = None
-    total_height = 0
-    visible_height = 0
 
     while running:
-        screen.fill((255, 255, 255))  # Clear screen with white background
+        screen.fill(WHITE)  # Clear screen with white background
         draw_toolbox(screen)
         draw_grid()
         draw_charges()
@@ -361,12 +362,7 @@ def main():
 
         # Draw the probe point and field info if available
         if probe_point and field_at_probe and math_details:
-            # Pass scroll_offset to draw_probe_info and get updated values
-            scroll_offset, text_area_rect, scrollbar_rect, total_height, visible_height = draw_probe_info(
-                screen, probe_point, field_at_probe, math_details, scroll_offset)
-        else:
-            text_area_rect = None  # No text area when probe info is not displayed
-            scrollbar_rect = None
+            draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details)
 
         # Event handling
         for event in pygame.event.get():
@@ -376,17 +372,7 @@ def main():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
                 if event.button == 1:  # Left mouse button clicked
-                    if text_area_rect and text_area_rect.collidepoint(mouse_x, mouse_y):
-                        if scrollbar_rect and scrollbar_rect.collidepoint(mouse_x, mouse_y):
-                            # Clicked on scrollbar
-                            is_dragging_scrollbar = True
-                            scrollbar_start_pos = (mouse_x, mouse_y)
-                            scrollbar_start_offset = scroll_offset
-                        else:
-                            # Clicked inside text area but not on scrollbar
-                            # Do nothing or handle text selection if needed
-                            pass
-                    elif mouse_x < TOOLBOX_WIDTH:
+                    if mouse_x < TOOLBOX_WIDTH:
                         # Clicked inside toolbox
                         previous_tool = current_tool
                         current_tool = handle_toolbox_click(mouse_x, mouse_y)
@@ -405,7 +391,7 @@ def main():
                             zoom_level = max(zoom_level - ZOOM_STEP, MIN_ZOOM_LEVEL)
                             scale_zoom(previous_zoom, zoom_level)
                     else:
-                        # Clicked outside text area and toolbox
+                        # Clicked outside toolbox
                         tool = get_selected_tool()
                         if tool == "add_positive":
                             add_charge(mouse_x, mouse_y, "positive")
@@ -441,42 +427,24 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button released
-                    if is_dragging_scrollbar:
-                        is_dragging_scrollbar = False
-                        scrollbar_start_pos = None
-                        scrollbar_start_offset = 0
-                    else:
-                        tool = get_selected_tool()
-                        if tool == "pan":
-                            is_dragging = False
-                        elif tool == "add_dielectric" and start_drag_pos:
-                            end_drag_pos = pygame.mouse.get_pos()
-                            add_dielectric(
-                                *start_drag_pos,
-                                *end_drag_pos,
-                                epsilon_r=10.0,  # Adjust as needed
-                                zoom_level=zoom_level,
-                                camera_offset_x=camera_offset_x,
-                                camera_offset_y=camera_offset_y,
-                                dielectrics=dielectrics,
-                            )
-                            print(f"Dielectric drawn from {start_drag_pos} to {end_drag_pos}")
-                            start_drag_pos = None
+                    if is_dragging:
+                        is_dragging = False
+                    elif current_tool == "add_dielectric" and start_drag_pos:
+                        end_drag_pos = pygame.mouse.get_pos()
+                        add_dielectric(
+                            *start_drag_pos,
+                            *end_drag_pos,
+                            epsilon_r=10.0,  # Adjust as needed
+                            zoom_level=zoom_level,
+                            camera_offset_x=camera_offset_x,
+                            camera_offset_y=camera_offset_y,
+                            dielectrics=dielectrics,
+                        )
+                        print(f"Dielectric drawn from {start_drag_pos} to {end_drag_pos}")
+                        start_drag_pos = None
 
             elif event.type == pygame.MOUSEMOTION:
-                if is_dragging_scrollbar:
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
-                    dy = mouse_y - scrollbar_start_pos[1]
-                    # Map dy to scroll_offset
-                    scrollbar_range = visible_height - (visible_height * (visible_height / total_height))
-                    if scrollbar_range > 0:
-                        delta_scrollbar = dy
-                        scroll_ratio = delta_scrollbar / scrollbar_range
-                        max_scroll = total_height - visible_height
-                        scroll_offset = scrollbar_start_offset + scroll_ratio * max_scroll
-                        # Clamp scroll_offset
-                        scroll_offset = max(0, min(scroll_offset, max_scroll))
-                elif is_dragging:
+                if is_dragging:
                     if event.buttons[0]:  # Left mouse button is pressed
                         mouse_x, mouse_y = pygame.mouse.get_pos()
                         dx = mouse_x - drag_start_pos[0]
@@ -500,22 +468,24 @@ def main():
                     print(f"Zooming out via keyboard. New zoom level: {zoom_level:.2f}")
 
             elif event.type == pygame.MOUSEWHEEL:
-                # Handle mouse wheel scrolling when probe field is active and mouse is over text area
+                # Handle mouse wheel scrolling when probe field is active and mouse is over sidebar
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                if text_area_rect and text_area_rect.collidepoint(mouse_x, mouse_y):
-                    # Adjust scroll_offset
-                    scroll_speed = 20  # Adjust scroll speed as needed
-                    scroll_offset -= event.y * scroll_speed
-                    # Limit scroll_offset will be handled in draw_probe_info
-                    print(f"Scroll offset updated: {scroll_offset}")
+                if probe_point and field_at_probe and math_details:
+                    # Check if mouse is over the sidebar
+                    sidebar_width = TOOLBOX_WIDTH
+                    sidebar_x_pos = screen_info.current_w - sidebar_width
+                    if sidebar_x_pos <= mouse_x <= screen_info.current_w and 0 <= mouse_y <= screen_info.current_h:
+                        # Adjust scroll_offset
+                        scroll_speed = 20  # Adjust scroll speed as needed
+                        scroll_offset -= event.y * scroll_speed
+                        # Clamp scroll_offset to prevent over-scrolling
+                        # This clamping is handled within draw_probe_info_sidebar
+                        print(f"Scroll offset updated: {scroll_offset}")
                 else:
-                    # Mouse wheel used outside text area; handle as needed (e.g., zoom)
+                    # Mouse wheel used outside probe info; handle as needed (e.g., zoom)
                     pass
 
         pygame.display.flip()
-
-    pygame.quit()
-    sys.exit()
 
 def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
     """
@@ -566,4 +536,11 @@ def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camer
     return total_ex, total_ey, math_details
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        pygame.quit()
+        sys.exit()
