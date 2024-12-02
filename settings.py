@@ -59,3 +59,13 @@ PROBE_INFO_MAX_WIDTH = TOOLBOX_WIDTH - 20  # Maximum width for content inside th
 # Color Definitions
 WHITE = (255, 255, 255)  # White color
 BLACK = (0, 0, 0)        # Black color (in case it's needed separately)
+
+# Shield Settings
+SHIELD_COLOR = (0, 0, 0)  # Black color for shields
+SHIELD_WIDTH = 3          # Thickness of the shield boundary
+SHIELD_EPSILON_R = 1.0    # Relative permittivity for shields (conductors have high epsilon)
+
+# Conductor settings
+CONDUCTOR_COLOR = (128, 128, 128)  # Gray
+INDUCED_CHARGE_RADIUS = 5          # Radius for induced charges
+INDUCED_CHARGE_COLOR = (0, 255, 0) 

@@ -11,9 +11,9 @@ from settings import (
     CHARGE_RADIUS,
 )
 
-def calculate_field(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
+def calculate_field(px, py, charges, dielectrics, shields, zoom_level, camera_offset_x, camera_offset_y):
     """
-    Calculate the electric field at a point (px, py), considering charges and dielectric regions.
+    Calculate the electric field at a point (px, py), considering charges, dielectrics, and shields.
     """
     total_ex, total_ey = 0.0, 0.0
 
@@ -21,31 +21,43 @@ def calculate_field(px, py, charges, dielectrics, zoom_level, camera_offset_x, c
     world_px = (px - camera_offset_x) / zoom_level
     world_py = (py - camera_offset_y) / zoom_level
 
-    # Check if the point is inside any dielectric region
+    # Determine the relative permittivity at the probe point
     epsilon_r = 1.0  # Default relative permittivity (vacuum)
-    for (x1, y1, width, height, dielectric_epsilon) in dielectrics:
-        x2 = x1 + width
-        y2 = y1 + height
-        if x1 <= world_px <= x2 and y1 <= world_py <= y2:
+
+    # Check dielectrics
+    for dielectric in dielectrics:
+        x1, y1, width, height, dielectric_epsilon = dielectric
+        if x1 <= world_px <= x1 + width and y1 <= world_py <= y1 + height:
             epsilon_r = dielectric_epsilon
             break
 
+    # Check shields (conductors have infinite epsilon, but we simulate by setting epsilon_r high)
+    for shield in shields:
+        x1, y1, width, height = shield
+        if x1 <= world_px <= x1 + width and y1 <= world_py <= y1 + height:
+            epsilon_r = 1e9  # Simulate conductor with very high epsilon
+            break
+
     # Calculate contributions from each charge
-    for (cx, cy, q) in charges:
+    for charge in charges:
+        cx, cy, q = charge
         dx = world_px - cx
         dy = world_py - cy
         r_squared = dx**2 + dy**2
         if r_squared == 0:
             continue  # Avoid division by zero
+
         e_magnitude = COULOMB_CONSTANT * q / (r_squared * epsilon_r)
         angle = math.atan2(dy, dx)
-        total_ex += e_magnitude * math.cos(angle)
-        total_ey += e_magnitude * math.sin(angle)
+        ex = e_magnitude * math.cos(angle)
+        ey = e_magnitude * math.sin(angle)
+
+        total_ex += ex
+        total_ey += ey
 
     return total_ex, total_ey
 
-
-def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
+def calculate_field_with_details(px, py, charges, dielectrics, shields, zoom_level, camera_offset_x, camera_offset_y):
     """
     Calculate the electric field at a point (px, py) and collect detailed calculation steps.
     Returns total_ex, total_ey, and math_details containing contributions from each charge.
@@ -57,18 +69,28 @@ def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camer
     world_px = (px - camera_offset_x) / zoom_level
     world_py = (py - camera_offset_y) / zoom_level
 
-    # Check if the point is inside any dielectric region
+    # Determine the relative permittivity at the probe point
     epsilon_r = 1.0  # Default relative permittivity (vacuum)
-    for (x1, y1, width, height, dielectric_epsilon) in dielectrics:
-        x2 = x1 + width
-        y2 = y1 + height
-        if x1 <= world_px <= x2 and y1 <= world_py <= y2:
+
+    # Check dielectrics
+    for dielectric in dielectrics:
+        x1, y1, width, height, dielectric_epsilon = dielectric
+        if x1 <= world_px <= x1 + width and y1 <= world_py <= y1 + height:
             epsilon_r = dielectric_epsilon
             break
+
+    # Check shields (conductors have infinite epsilon, but we simulate by setting epsilon_r high)
+    for shield in shields:
+        x1, y1, width, height = shield
+        if x1 <= world_px <= x1 + width and y1 <= world_py <= y1 + height:
+            epsilon_r = 1e9  # Simulate conductor with very high epsilon
+            break
+
     math_details['epsilon_r'] = epsilon_r
 
     # Calculate contributions from each charge
-    for (cx, cy, q) in charges:
+    for charge in charges:
+        cx, cy, q = charge
         dx = world_px - cx
         dy = world_py - cy
         r_squared = dx**2 + dy**2
@@ -94,11 +116,9 @@ def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camer
 
     return total_ex, total_ey, math_details
 
-def draw_field_lines(
-    screen, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y, screen_info
-):
+def draw_field_lines(screen, charges, dielectrics, shields, zoom_level, camera_offset_x, camera_offset_y, screen_info):
     """
-    Draw electric field lines based on charges and dielectric regions.
+    Draw electric field lines based on charges, dielectrics, and shields.
     """
     arrow_interval = 10  # Interval to place arrows along the line
     arrow_size = 5       # Size of the arrowhead
@@ -138,7 +158,7 @@ def draw_field_lines(
             steps = 0
 
             for _ in range(100):  # Max steps to trace the line
-                ex, ey = calculate_field(x, y, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y)
+                ex, ey = calculate_field(x, y, charges, dielectrics, shields, zoom_level, camera_offset_x, camera_offset_y)
                 magnitude = math.sqrt(ex**2 + ey**2)
                 if magnitude == 0:
                     break
@@ -146,6 +166,23 @@ def draw_field_lines(
                 step_size = FIELD_LINE_STEP * zoom_level / magnitude
                 x += direction * step_size * ex
                 y += direction * step_size * ey
+
+                # Check if the new point is inside any shield
+                inside_shield = False
+                for shield in shields:
+                    shield_x1, shield_y1, shield_width, shield_height = shield
+                    shield_screen_x = shield_x1 * zoom_level + camera_offset_x
+                    shield_screen_y = shield_y1 * zoom_level + camera_offset_y
+                    shield_screen_width = shield_width * zoom_level
+                    shield_screen_height = shield_height * zoom_level
+                    if shield_screen_x <= x <= shield_screen_x + shield_screen_width and \
+                       shield_screen_y <= y <= shield_screen_y + shield_screen_height:
+                        inside_shield = True
+                        break
+
+                if inside_shield:
+                    break  # Stop drawing the line if it enters a shield
+
                 line_points.append((x, y))
 
                 # Add arrowheads at intervals

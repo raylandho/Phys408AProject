@@ -21,6 +21,8 @@ buttons = [
     {"label": "Add Dielectric", "tool": "add_dielectric"},
     {"label": "Remove Dielectric", "tool": "remove_dielectric"},
     {"label": "Probe Field", "tool": "probe_field"},  
+    {"label": "Add Shield", "tool": "add_shield"},  # New Shield Tool
+    {"label": "Remove Shield", "tool": "remove_shield"}, 
 ]
 selected_tool = "add_positive"  # Default selected tool
 

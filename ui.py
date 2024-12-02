@@ -25,8 +25,31 @@ from settings import (
     BLACK,  # Ensure BLACK is imported
 )
 
+# Initialize Pygame fonts
+pygame.font.init()
+
 # Global scroll offset for probe information
 scroll_offset = 0
+
+# Define toolbox tools and their properties
+TOOLS = [
+    {"label": "Add Positive", "name": "add_positive"},
+    {"label": "Add Negative", "name": "add_negative"},
+    {"label": "Erase", "name": "erase"},
+    {"label": "Add Dielectric", "name": "add_dielectric"},
+    {"label": "Remove Dielectric", "name": "remove_dielectric"},
+    {"label": "Add Shield", "name": "add_shield"},
+    {"label": "Remove Shield", "name": "remove_shield"},
+    {"label": "Probe Field", "name": "probe_field"},
+    {"label": "Zoom In", "name": "zoom_in"},
+    {"label": "Zoom Out", "name": "zoom_out"},
+    {"label": "Pan", "name": "pan"},  # Added Pan tool
+]
+
+BUTTON_HEIGHT = 50
+BUTTON_SPACING = 10
+BUTTON_WIDTH = TOOLBOX_WIDTH - 20
+START_Y = 50
 
 def render_latex(text, font_size=LATEX_FONT_SIZE, dpi=LATEX_DPI, color='black', max_width=None):
     """
@@ -207,6 +230,42 @@ def handle_scroll(event):
             scroll_offset = 0
         # The maximum scroll limit is handled in draw_probe_info_sidebar
         print(f"Scroll offset updated: {scroll_offset}")
+
+def draw_toolbox(screen):
+    """
+    Draws the toolbox on the left side of the screen.
+    """
+    # Toolbox background
+    pygame.draw.rect(screen, SIDEBAR_BACKGROUND_COLOR, (0, 0, TOOLBOX_WIDTH, screen.get_height()))
+    
+    # Example toolbox buttons (Add Positive, Add Negative, Erase, etc.)
+    # You can customize the toolbox with actual icons or text
+    
+    font = pygame.font.Font(None, 30)
+    
+    for idx, tool in enumerate(TOOLS):
+        label = tool["label"]
+        name = tool["name"]
+        button_rect = pygame.Rect(10, START_Y + idx * (BUTTON_HEIGHT + BUTTON_SPACING), BUTTON_WIDTH, BUTTON_HEIGHT)
+        pygame.draw.rect(screen, BLACK, button_rect, 2)  # Button border
+        
+        # Render button label
+        text_surface = font.render(label, True, BLACK)
+        text_rect = text_surface.get_rect(center=button_rect.center)
+        screen.blit(text_surface, text_rect)
+
+def handle_toolbox_click(mouse_x, mouse_y):
+    """
+    Determines which toolbox button was clicked based on mouse coordinates.
+    Returns the name of the selected tool.
+    """
+    for idx, tool in enumerate(TOOLS):
+        button_rect = pygame.Rect(10, START_Y + idx * (BUTTON_HEIGHT + BUTTON_SPACING), BUTTON_WIDTH, BUTTON_HEIGHT)
+        if button_rect.collidepoint(mouse_x, mouse_y):
+            selected_tool = tool["name"]
+            print(f"Selected tool: {selected_tool}")
+            return selected_tool
+    return None  # No tool selected
 
 def draw_dielectric_preview(screen, start_pos, end_pos):
     """

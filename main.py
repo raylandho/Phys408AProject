@@ -3,6 +3,7 @@
 import math
 import pygame
 import sys
+import ui  # Import the entire ui module
 from settings import (
     WIDTH,
     HEIGHT,
@@ -24,10 +25,9 @@ from settings import (
     WHITE,
     BLACK,
 )
-from toolbox import draw_toolbox, handle_toolbox_click, get_selected_tool
 from electric_field import calculate_field_with_details, draw_field_lines
 from dielectric import add_dielectric, draw_dielectrics, remove_dielectric
-from ui import draw_probe_info_sidebar, handle_scroll, draw_dielectric_preview
+from shield import add_shield, remove_shield, draw_shields
 
 # Initialize Pygame
 pygame.init()
@@ -44,9 +44,10 @@ zoom_level = INITIAL_ZOOM_LEVEL
 camera_offset_x, camera_offset_y = WIDTH // 2, HEIGHT // 2
 charges = []
 dielectrics = []  # List to store dielectric regions
+shields = []       # List to store shield regions
 is_dragging = False
 drag_start_pos = (0, 0)
-start_drag_pos = None  # For placing dielectrics
+start_drag_pos = None  # For placing dielectrics or shields
 current_tool = "add_positive"  # Default tool
 
 # Variables for field probe
@@ -54,7 +55,8 @@ probe_point = None  # Stores the position where the user probed the field
 field_at_probe = None  # Stores the electric field at the probe point
 math_details = None  # Stores detailed calculations
 
-# Scroll offset for probe field text is now handled in ui.py as a global variable
+# Initialize scroll_offset in ui module
+ui.scroll_offset = 0
 
 def draw_grid():
     """
@@ -129,13 +131,17 @@ def main():
 
     while running:
         screen.fill(WHITE)  # Clear screen with white background
-        draw_toolbox(screen)
+        ui.draw_toolbox(screen)  # Draw toolbox from ui module
         draw_grid()
         draw_charges()
+        draw_shields(
+            screen, zoom_level, camera_offset_x, camera_offset_y, shields
+        )  # Draw shields
         draw_field_lines(
             screen,
             charges,
             dielectrics,
+            shields,      # Pass shields separately
             zoom_level,
             camera_offset_x,
             camera_offset_y,
@@ -148,11 +154,16 @@ def main():
         # Draw dielectric preview if in progress
         if current_tool == "add_dielectric" and start_drag_pos:
             end_drag_pos = pygame.mouse.get_pos()
-            draw_dielectric_preview(screen, start_drag_pos, end_drag_pos)
+            ui.draw_dielectric_preview(screen, start_drag_pos, end_drag_pos)
+
+        # Draw shield preview if in progress
+        if current_tool == "add_shield" and start_drag_pos:
+            end_drag_pos = pygame.mouse.get_pos()
+            # Optionally, implement a preview for shields similar to dielectrics
 
         # Draw the probe point and field info if available
         if probe_point and field_at_probe and math_details:
-            draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details)
+            ui.draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details)
 
         # Event handling
         for event in pygame.event.get():
@@ -165,23 +176,27 @@ def main():
                     if mouse_x < TOOLBOX_WIDTH:
                         # Clicked inside toolbox
                         previous_tool = current_tool
-                        current_tool = handle_toolbox_click(mouse_x, mouse_y)
-                        # Clear probe point if switching from probe tool
-                        if previous_tool == "probe_field" and current_tool != "probe_field":
-                            probe_point = None
-                            field_at_probe = None
-                            math_details = None
-                            # Reset scroll_offset in ui.py
-                            from ui import scroll_offset
-                            scroll_offset = 0
-                        if current_tool == "zoom_in":
-                            previous_zoom = zoom_level
-                            zoom_level = min(zoom_level + ZOOM_STEP, MAX_ZOOM_LEVEL)
-                            scale_zoom(previous_zoom, zoom_level)
-                        elif current_tool == "zoom_out":
-                            previous_zoom = zoom_level
-                            zoom_level = max(zoom_level - ZOOM_STEP, MIN_ZOOM_LEVEL)
-                            scale_zoom(previous_zoom, zoom_level)
+                        selected_tool = ui.handle_toolbox_click(mouse_x, mouse_y)
+                        if selected_tool:
+                            current_tool = selected_tool
+                            # Clear probe point if switching from probe tool
+                            if previous_tool == "probe_field" and current_tool != "probe_field":
+                                probe_point = None
+                                field_at_probe = None
+                                math_details = None
+                                # Reset scroll_offset in ui.py
+                                ui.scroll_offset = 0
+                            if current_tool == "zoom_in":
+                                previous_zoom = zoom_level
+                                zoom_level = min(zoom_level + ZOOM_STEP, MAX_ZOOM_LEVEL)
+                                scale_zoom(previous_zoom, zoom_level)
+                            elif current_tool == "zoom_out":
+                                previous_zoom = zoom_level
+                                zoom_level = max(zoom_level - ZOOM_STEP, MIN_ZOOM_LEVEL)
+                                scale_zoom(previous_zoom, zoom_level)
+                            elif current_tool == "pan":
+                                is_dragging = True
+                                drag_start_pos = (mouse_x, mouse_y)
                     else:
                         # Clicked outside toolbox
                         tool = current_tool
@@ -207,7 +222,15 @@ def main():
                             # Set the probe point and calculate the field with details
                             probe_point = (mouse_x, mouse_y)
                             ex, ey, math_details = calculate_field_with_details(
-                                mouse_x, mouse_y, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y)
+                                mouse_x,
+                                mouse_y,
+                                charges,
+                                dielectrics,
+                                shields,  # Pass shields as an argument
+                                zoom_level,
+                                camera_offset_x,
+                                camera_offset_y
+                            )
                             field_magnitude = math.hypot(ex, ey)
                             field_at_probe = {
                                 'Ex': ex,
@@ -215,13 +238,25 @@ def main():
                                 'E_magnitude': field_magnitude
                             }
                             # Reset scroll_offset in ui.py
-                            from ui import scroll_offset
-                            scroll_offset = 0
+                            ui.scroll_offset = 0
                             print(f"Probed field at ({mouse_x}, {mouse_y}): Ex={ex}, Ey={ey}, |E|={field_magnitude}")
+                        elif tool == "add_shield":
+                            # Start drawing a shield rectangle
+                            start_drag_pos = (mouse_x, mouse_y)
+                        elif tool == "remove_shield":
+                            removed = remove_shield(
+                                mouse_x, mouse_y, zoom_level, camera_offset_x, camera_offset_y, shields
+                            )
+                            if removed:
+                                print("Shield removed.")
+                elif event.button == 3:  # Right mouse button for adding shields (Optional)
+                    if current_tool == "add_shield":
+                        # Optionally, handle right-click differently
+                        pass
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button released
-                    if is_dragging:
+                    if is_dragging and current_tool == "pan":
                         is_dragging = False
                     elif current_tool == "add_dielectric" and start_drag_pos:
                         end_drag_pos = pygame.mouse.get_pos()
@@ -236,6 +271,18 @@ def main():
                         )
                         print(f"Dielectric drawn from {start_drag_pos} to {end_drag_pos}")
                         start_drag_pos = None
+                    elif current_tool == "add_shield" and start_drag_pos:
+                        end_drag_pos = pygame.mouse.get_pos()
+                        add_shield(
+                            *start_drag_pos,
+                            *end_drag_pos,
+                            zoom_level=zoom_level,
+                            camera_offset_x=camera_offset_x,
+                            camera_offset_y=camera_offset_y,
+                            shields=shields,
+                        )
+                        print(f"Shield drawn from {start_drag_pos} to {end_drag_pos}")
+                        start_drag_pos = None
 
             elif event.type == pygame.MOUSEMOTION:
                 if is_dragging:
@@ -243,8 +290,10 @@ def main():
                         mouse_x, mouse_y = pygame.mouse.get_pos()
                         dx = mouse_x - drag_start_pos[0]
                         dy = mouse_y - drag_start_pos[1]
-                        camera_offset_x += dx
-                        camera_offset_y += dy
+                        if current_tool == "pan":
+                            # Update camera offsets based on drag
+                            camera_offset_x += dx
+                            camera_offset_y += dy
                         drag_start_pos = (mouse_x, mouse_y)
                     else:
                         is_dragging = False  # Left mouse button not pressed anymore
@@ -270,15 +319,15 @@ def main():
                     sidebar_x_pos = screen.get_width() - sidebar_width
                     if sidebar_x_pos <= mouse_x <= screen.get_width() and 0 <= mouse_y <= screen.get_height():
                         # Adjust scroll_offset using handle_scroll from ui.py
-                        handle_scroll(event)
-                        print(f"Scroll offset updated: {scroll_offset}")
+                        ui.handle_scroll(event)
+                        print(f"Scroll offset updated: {ui.scroll_offset}")
                 else:
                     # Mouse wheel used outside probe info; handle as needed (e.g., zoom)
                     pass
 
         pygame.display.flip()
 
-def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camera_offset_x, camera_offset_y):
+def calculate_field_with_details(px, py, charges, dielectrics, shields, zoom_level, camera_offset_x, camera_offset_y):
     """
     Calculate the electric field at a point (px, py) and collect detailed calculation steps.
     """
@@ -291,12 +340,23 @@ def calculate_field_with_details(px, py, charges, dielectrics, zoom_level, camer
 
     # Check if the point is inside any dielectric region
     epsilon_r = 1.0  # Default relative permittivity (vacuum)
-    for (x1, y1, width, height, dielectric_epsilon) in dielectrics:
+    for dielectric in dielectrics:
+        x1, y1, width, height, dielectric_epsilon = dielectric
         x2 = x1 + width
         y2 = y1 + height
         if x1 <= world_px <= x2 and y1 <= world_py <= y2:
             epsilon_r = dielectric_epsilon
             break
+
+    # Check if the point is inside any shield region
+    for shield in shields:
+        x1, y1, width, height = shield
+        x2 = x1 + width
+        y2 = y1 + height
+        if x1 <= world_px <= x2 and y1 <= world_py <= y2:
+            epsilon_r = 1e9  # Simulate conductor with very high epsilon
+            break
+
     math_details['epsilon_r'] = epsilon_r
 
     # Calculate contributions from each charge
