@@ -1,5 +1,3 @@
-# shield.py
-
 import pygame
 import math
 from settings import (
@@ -56,11 +54,9 @@ def draw_shields(screen, zoom_level, camera_offset_x, camera_offset_y, shields):
         screen_width = int(width * zoom_level)
         screen_height = int(height * zoom_level)
 
-        # Draw the shield rectangle
         shield_rect = pygame.Rect(screen_x, screen_y, screen_width, screen_height)
         pygame.draw.rect(screen, SHIELD_COLOR, shield_rect, SHIELD_WIDTH)
 
-        # Optionally, fill the shield with a transparent color to indicate it's conductive
         shield_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
-        shield_surface.fill((50, 50, 50, 50))  # Semi-transparent gray
+        shield_surface.fill((50, 50, 50, 50))  
         screen.blit(shield_surface, (screen_x, screen_y))

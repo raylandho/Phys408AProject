@@ -1,5 +1,3 @@
-# toolbox.py
-
 import pygame
 from settings import (
     TOOLBOX_WIDTH,
@@ -21,7 +19,7 @@ buttons = [
     {"label": "Add Dielectric", "tool": "add_dielectric"},
     {"label": "Remove Dielectric", "tool": "remove_dielectric"},
     {"label": "Probe Field", "tool": "probe_field"},  
-    {"label": "Add Shield", "tool": "add_shield"},  # New Shield Tool
+    {"label": "Add Shield", "tool": "add_shield"},  
     {"label": "Remove Shield", "tool": "remove_shield"}, 
 ]
 selected_tool = "add_positive"  # Default selected tool
@@ -55,7 +53,7 @@ def handle_toolbox_click(x, y):
         button_index = y // BUTTON_HEIGHT
         if 0 <= button_index < len(buttons):
             selected_tool = buttons[button_index]["tool"]
-            print(f"Selected tool: {selected_tool}")  # Debugging output
+            print(f"Selected tool: {selected_tool}") 
             return selected_tool
     return None
 

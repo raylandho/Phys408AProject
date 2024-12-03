@@ -1,9 +1,7 @@
-# main.py
-
 import math
 import pygame
 import sys
-import ui  # Import the entire ui module
+import ui 
 from settings import (
     WIDTH,
     HEIGHT,
@@ -165,7 +163,6 @@ def main():
         if probe_point and field_at_probe and math_details:
             ui.draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details)
 
-        # Event handling
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False

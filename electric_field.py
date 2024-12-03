@@ -1,5 +1,3 @@
-# electric_field.py
-
 import math
 import pygame
 from settings import (

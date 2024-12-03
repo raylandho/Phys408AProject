@@ -1,5 +1,3 @@
-# dielectric.py
-
 import pygame
 import math
 from settings import (
@@ -73,13 +71,12 @@ def draw_dielectrics(screen, zoom_level, camera_offset_x, camera_offset_y, diele
 
         # Draw the dielectric rectangle with transparency
         dielectric_surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
-        dielectric_color = (0, 255, 255, 100)  # Cyan with transparency
+        dielectric_color = (0, 255, 255, 100) 
         dielectric_surface.fill(dielectric_color)
         screen.blit(dielectric_surface, (screen_x, screen_y))
 
-        # Draw the border
         rect = pygame.Rect(screen_x, screen_y, screen_width, screen_height)
-        pygame.draw.rect(screen, (0, 0, 0), rect, 2)  # Black border
+        pygame.draw.rect(screen, (0, 0, 0), rect, 2)  
 
         # Calculate polarization direction based on electric field at the center
         center_world_x = world_x + width / 2
@@ -99,21 +96,17 @@ def draw_dielectrics(screen, zoom_level, camera_offset_x, camera_offset_y, diele
         # Decide which sides to place bound charges on based on field direction
         if abs_Ey > threshold:
             if Ey > 0:
-                # Field points upward: positive at bottom, negative at top
                 top_side = "negative"
                 bottom_side = "positive"
             else:
-                # Field points downward: positive at top, negative at bottom
                 top_side = "positive"
                 bottom_side = "negative"
 
         if abs_Ex > threshold:
             if Ex > 0:
-                # Field points to the right: positive on right, negative on left
                 right_side = "positive"
                 left_side = "negative"
             else:
-                # Field points to the left: positive on left, negative on right
                 right_side = "negative"
                 left_side = "positive"
 
@@ -137,9 +130,8 @@ def draw_dielectrics(screen, zoom_level, camera_offset_x, camera_offset_y, diele
                     x = screen_x + screen_width
                     y = screen_y + int(i * screen_height / num_charges)
                     color = POSITIVE_COLOR if right_side == "positive" else NEGATIVE_COLOR
-                pygame.draw.circle(screen, color, (x, y), 5)  # Bound charge marker
+                pygame.draw.circle(screen, color, (x, y), 5)  
 
-        # Place bound charges on relevant sides
         if top_side:
             place_bound_charges("top")
         if bottom_side:

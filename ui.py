@@ -1,5 +1,3 @@
-# ui.py
-
 import pygame
 import io
 import math
@@ -21,17 +19,14 @@ from settings import (
     DIELECTRIC_PREVIEW_COLOR,
     DIELECTRIC_PREVIEW_WIDTH,
     PROBE_INFO_MAX_WIDTH,
-    WHITE,  # Ensure WHITE is imported
-    BLACK,  # Ensure BLACK is imported
+    WHITE,  
+    BLACK,  
 )
 
-# Initialize Pygame fonts
 pygame.font.init()
 
-# Global scroll offset for probe information
 scroll_offset = 0
 
-# Define toolbox tools and their properties
 TOOLS = [
     {"label": "Add Positive", "name": "add_positive"},
     {"label": "Add Negative", "name": "add_negative"},
@@ -43,7 +38,7 @@ TOOLS = [
     {"label": "Probe Field", "name": "probe_field"},
     {"label": "Zoom In", "name": "zoom_in"},
     {"label": "Zoom Out", "name": "zoom_out"},
-    {"label": "Pan", "name": "pan"},  # Added Pan tool
+    {"label": "Pan", "name": "pan"},  
 ]
 
 BUTTON_HEIGHT = 50
@@ -55,35 +50,28 @@ def render_latex(text, font_size=LATEX_FONT_SIZE, dpi=LATEX_DPI, color='black', 
     """
     Render math-formatted text to a Pygame surface using Matplotlib and savefig.
     """
-    # Create a figure and axis with padding
     fig = Figure()
     canvas = FigureCanvasAgg(fig)
     ax = fig.add_subplot(111)
     ax.axis('off')
 
-    # Set font properties
     font_properties = FontProperties(size=font_size)
 
-    # Add text
     t = ax.text(0.5, 0.5, text, fontproperties=font_properties, color=color,
                 horizontalalignment='center', verticalalignment='center')
 
-    # Draw the canvas to compute text size
     canvas.draw()
     renderer = canvas.get_renderer()
     bbox = t.get_window_extent(renderer=renderer).expanded(1.2, 1.2)
 
-    # Calculate width and height in pixels
     width, height = int(bbox.width), int(bbox.height)
 
-    # Adjust figure size
     fig.set_size_inches(width / dpi, height / dpi)
     ax.set_position([0, 0, 1, 1])
     ax.set_xlim(bbox.x0, bbox.x1)
     ax.set_ylim(bbox.y0, bbox.y1)
     t.set_position(((bbox.x0 + bbox.x1) / 2, (bbox.y0 + bbox.y1) / 2))
 
-    # Redraw the canvas with the updated figure size
     canvas.draw()
 
     # Save the figure to a buffer with tight bounding box
@@ -93,10 +81,8 @@ def render_latex(text, font_size=LATEX_FONT_SIZE, dpi=LATEX_DPI, color='black', 
     plt.close(fig)
     buf.seek(0)
 
-    # Load image with Pygame
     image = pygame.image.load(buf, 'png')
 
-    # Optionally scale down the image if it exceeds max_width
     if max_width and image.get_width() > max_width:
         scale_factor = max_width / image.get_width()
         new_width = int(image.get_width() * scale_factor)
@@ -109,7 +95,7 @@ def draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details):
     """
     Display probe information in a fixed sidebar on the right side of the screen with a scrollbar.
     """
-    global scroll_offset  # Use the global scroll offset
+    global scroll_offset  
 
     sidebar_width = TOOLBOX_WIDTH
     sidebar_x = screen.get_width() - sidebar_width
@@ -119,7 +105,6 @@ def draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details):
     # Draw sidebar background
     pygame.draw.rect(screen, SIDEBAR_BACKGROUND_COLOR, (sidebar_x, sidebar_y, sidebar_width, sidebar_height))
 
-    # Title
     title_font = pygame.font.Font(None, SIDEBAR_TITLE_FONT_SIZE)
     title_text = title_font.render("Probe Information", True, BLACK)  # Using BLACK
     screen.blit(title_text, (sidebar_x + 10, 10))
@@ -205,10 +190,9 @@ def draw_probe_info_sidebar(screen, probe_point, field_at_probe, math_details):
 
     for rendered_line, line_height in rendered_lines:
         if rendered_line:
-            # Only blit if within the visible area
             if y_offset + line_height > 50 and y_offset < sidebar_height - 20:
                 screen.blit(rendered_line, (sidebar_x + 10, y_offset))
-        y_offset += line_height + 5  # Move down for the next line
+        y_offset += line_height + 5  
 
     # Draw scrollbar if content exceeds sidebar height
     if total_content_height > (sidebar_height - 50):
@@ -225,21 +209,15 @@ def handle_scroll(event):
     scroll_speed = 20  # Adjust scroll speed as needed
     if event.type == pygame.MOUSEWHEEL:
         scroll_offset -= event.y * scroll_speed
-        # Clamp scroll_offset to prevent over-scrolling
         if scroll_offset < 0:
             scroll_offset = 0
-        # The maximum scroll limit is handled in draw_probe_info_sidebar
         print(f"Scroll offset updated: {scroll_offset}")
 
 def draw_toolbox(screen):
     """
     Draws the toolbox on the left side of the screen.
     """
-    # Toolbox background
     pygame.draw.rect(screen, SIDEBAR_BACKGROUND_COLOR, (0, 0, TOOLBOX_WIDTH, screen.get_height()))
-    
-    # Example toolbox buttons (Add Positive, Add Negative, Erase, etc.)
-    # You can customize the toolbox with actual icons or text
     
     font = pygame.font.Font(None, 30)
     
@@ -247,9 +225,8 @@ def draw_toolbox(screen):
         label = tool["label"]
         name = tool["name"]
         button_rect = pygame.Rect(10, START_Y + idx * (BUTTON_HEIGHT + BUTTON_SPACING), BUTTON_WIDTH, BUTTON_HEIGHT)
-        pygame.draw.rect(screen, BLACK, button_rect, 2)  # Button border
+        pygame.draw.rect(screen, BLACK, button_rect, 2)  
         
-        # Render button label
         text_surface = font.render(label, True, BLACK)
         text_rect = text_surface.get_rect(center=button_rect.center)
         screen.blit(text_surface, text_rect)
@@ -265,14 +242,12 @@ def handle_toolbox_click(mouse_x, mouse_y):
             selected_tool = tool["name"]
             print(f"Selected tool: {selected_tool}")
             return selected_tool
-    return None  # No tool selected
+    return None  
 
 def draw_dielectric_preview(screen, start_pos, end_pos):
     """
     Draw a preview of the dielectric being added as a rectangle while dragging.
     """
-    # These constants are imported from settings.py
-    # Ensure DIELECTRIC_PREVIEW_COLOR and DIELECTRIC_PREVIEW_WIDTH are imported
     start_x, start_y = start_pos
     end_x, end_y = end_pos
 
@@ -282,4 +257,4 @@ def draw_dielectric_preview(screen, start_pos, end_pos):
     rect_height = abs(end_y - start_y)
 
     rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
-    pygame.draw.rect(screen, DIELECTRIC_PREVIEW_COLOR, rect, DIELECTRIC_PREVIEW_WIDTH)  # Cyan outline
+    pygame.draw.rect(screen, DIELECTRIC_PREVIEW_COLOR, rect, DIELECTRIC_PREVIEW_WIDTH)  
